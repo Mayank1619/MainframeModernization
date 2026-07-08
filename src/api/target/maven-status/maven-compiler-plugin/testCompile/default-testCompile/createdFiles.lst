@@ -1,0 +1,6 @@
+com\bankofz\inqcust\api\service\CustomerInquiryServiceTest.class
+com\bankofz\inqcust\api\mapper\CustomerMapperTest.class
+com\bankofz\inqcust\api\service\CustomerInquiryServiceTest$InMemoryCustomerRepository.class
+com\bankofz\inqcust\api\service\LegacyDateConverterTest.class
+com\bankofz\inqcust\api\controller\CustomerInquiryControllerTest.class
+com\bankofz\inqcust\api\service\RiskAssessmentServiceTest.class
