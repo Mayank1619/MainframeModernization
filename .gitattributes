@@ -1,0 +1,37 @@
+*.cpy zos-working-tree-encoding=ibm-1047 
+*.cbl zos-working-tree-encoding=ibm-1047 
+*.bms zos-working-tree-encoding=ibm-1047 
+*.pli zos-working-tree-encoding=ibm-1047 
+*.mfs zos-working-tree-encoding=ibm-1047 
+*.bnd zos-working-tree-encoding=ibm-1047 
+*.lnk zos-working-tree-encoding=ibm-1047 
+*.rex zos-working-tree-encoding=ibm-1047 
+#.txt zos-working-tree-encoding=ibm-1047 
+*.groovy zos-working-tree-encoding=ibm-1047 
+*.sh zos-working-tree-encoding=ibm-1047 
+*.properties zos-working-tree-encoding=ibm-1047 
+*.asm zos-working-tree-encoding=ibm-1047 
+*.jcl zos-working-tree-encoding=ibm-1047 
+*.csd zos-working-tree-encoding=ibm-1047 
+*.data zos-working-tree-encoding=ibm-1047 
+*.exec zos-working-tree-encoding=ibm-1047 
+*.mac zos-working-tree-encoding=ibm-1047 
+*.c zos-working-tree-encoding=ibm-1047 
+*.opt zos-working-tree-encoding=ibm-1047 
+*.h zos-working-tree-encoding=ibm-1047 
+*.plx zos-working-tree-encoding=ibm-1047 
+*.copy zos-working-tree-encoding=ibm-1047 
+*.lmod zos-working-tree-encoding=ibm-1047 
+*.dtl zos-working-tree-encoding=ibm-1047 
+*.config zos-working-tree-encoding=ibm-1047 
+*.azucfg zos-working-tree-encoding=utf-8 
+*.json zos-working-tree-encoding=utf-8 
+*.xml zos-working-tree-encoding=utf-8 
+*.bzucfg zos-working-tree-encoding=ibm-1047 
+*.plbck binary
+*.yaml zos-working-tree-encoding=ibm-1047 
+
+*.yml zos-working-tree-encoding=utf-8
+*.yaml zos-working-tree-encoding=utf-8
+
+*.rec binary

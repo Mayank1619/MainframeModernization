@@ -1,0 +1,87 @@
+# yaml-language-server: $schema=./cics_region_0.6.0.schema.json
+vars:
+  applid: "CICSBOZ"
+  sysid: "CBOZ"
+  region_hlq: "BANKZ"
+  java_home: "/usr/lpp/java/java21/current_64"
+  region_uss_dir: "/usr/local/sandboxes/bank-of-z"
+  cmci_port: "27100"
+  cics_hlq: "CICSTS63"
+  cics_uss_dir: "/usr/lpp/cicsts/cicsts63"
+  db2_hlq: "DB2V13"
+  eqaw_hlq: "EQAW.SEQAMOD"
+
+cics_region:
+  applid: "{{ vars.applid }}"
+  sysid: "{{ vars.sysid }}"
+
+  csd:
+    content:
+      - type: resource_builder
+        model: ./resource-model.yaml
+        definitions:
+          - ./bank-of-z-definitions.yaml
+          - ./debug-definitions.yaml
+
+  installation:
+    data_sets:
+      cics:
+        sdfhlic: "{{ vars.cics_hlq }}.SDFHLIC"
+        hlq: "{{ vars.cics_hlq }}.CICS"
+      cpsm:
+        hlq: "{{ vars.cics_hlq }}.CPSM"
+    dir: "{{ vars.cics_uss_dir }}"
+
+  region_hlq: "{{ vars.region_hlq }}.{{ vars.applid }}"
+
+  region_jcl:
+    type: JOB
+    job_parameters:
+      region: 0M
+    dfhrpl:
+      top_data_sets:
+        - "{{ vars.eqaw_hlq }}.SEQAMOD"
+      data_sets:
+        - SYS1.SIEAMIGE
+        - SYS1.MIGLIB
+        - TCPIP.SEZATCP
+    dds:
+      - name: DFHTABLE
+        dsn: "{{ vars.region_hlq }}.{{ vars.applid }}.TABLES.SOURCE"
+    steplib:
+      top_data_sets:
+        - "{{ vars.db2_hlq }}.SDSNLOAD"
+        - "{{ vars.db2_hlq }}.SDSNEXIT"
+
+  sit_parameters:
+    start: INITIAL
+    grplist: DFHLIST,BANKZLST
+    gmtext: SMSS Region provisioned with zconfig
+    gmtran: CESL
+    sec: "YES"
+    db2conn: "YES"
+    securetcpip: "NO"
+    ussconfig: "{{ vars.region_uss_dir }}/{{ vars.applid }}/config"
+    resoverrides: resourceOverrides.cicsoverrides.yaml
+    xtran: "NO"
+    xcmd: "NO"
+    xdb2: "NO"
+    xppt: "NO"
+    xuser: "NO"
+    xfct: "NO"
+    xtst: "NO"
+    xdct: "NO"
+    tcpip: "YES"
+    pltpi: "SI"
+
+  extensions:
+    cics_cmci:
+      provider: JVMSERVER
+      port: "{{ vars.cmci_port }}"
+      authentication: "NO"
+      ssl: "NO"
+
+  jvm_profile_dir: "{{ vars.region_uss_dir }}/{{ vars.applid }}/JVMProfiles"
+  jvm_profiles:
+    - "EYUSMSSJ.jvmprofile"
+ 
