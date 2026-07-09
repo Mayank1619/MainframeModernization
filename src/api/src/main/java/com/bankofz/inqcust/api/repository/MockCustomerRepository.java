@@ -77,6 +77,18 @@ public class MockCustomerRepository implements CustomerRepository {
                 .toList();
     }
 
+    @Override
+    public Optional<CustomerRecord> findLatestBySortCode(String sortCode) {
+        if (isDbMode()) {
+            return findLatestBySortCodeFromDb(sortCode);
+        }
+
+        return customers.stream()
+                .filter(customer -> sortCode.equals(customer.sortCode()))
+                // Customer numbers are fixed-width 10-digit strings; lexicographic order matches numeric order.
+                .max((left, right) -> left.customerNumber().compareTo(right.customerNumber()));
+    }
+
     private Optional<CustomerRecord> findBySortCodeAndCustomerNumberFromDb(String sortCode, String customerNumber) {
         String sql = """
                 SELECT
@@ -154,6 +166,47 @@ public class MockCustomerRepository implements CustomerRepository {
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Failed DB lookup for sort code", exception);
+        }
+    }
+
+    private Optional<CustomerRecord> findLatestBySortCodeFromDb(String sortCode) {
+        String sql = """
+                SELECT
+                    CUSTOMER_EYECATCHER,
+                    CUSTOMER_SORTCODE,
+                    CUSTOMER_NUMBER,
+                    CUSTOMER_TITLE,
+                    CUSTOMER_FIRST_NAME,
+                    CUSTOMER_LAST_NAME,
+                    CUSTOMER_DATE_OF_BIRTH,
+                    CUSTOMER_PHONE,
+                    CUSTOMER_ADDR_LINE1,
+                    CUSTOMER_ADDR_LINE2,
+                    CUSTOMER_CITY,
+                    CUSTOMER_POSTCODE,
+                    CUSTOMER_COUNTRY,
+                    CUSTOMER_STATUS,
+                    CUSTOMER_CREATED_DATE,
+                    CUSTOMER_CREDIT_SCORE,
+                    CUSTOMER_CS_REVIEW_DATE
+                FROM %s
+                WHERE CUSTOMER_SORTCODE = ?
+                ORDER BY CUSTOMER_NUMBER DESC
+                FETCH FIRST 1 ROW ONLY
+                """.formatted(dbTableName);
+
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, sortCode);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return Optional.of(toCustomerRecord(resultSet));
+                }
+                return Optional.empty();
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed DB lookup for latest customer", exception);
         }
     }
 
