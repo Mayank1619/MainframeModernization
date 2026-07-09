@@ -3,16 +3,17 @@ package com.bankofz.inqcust.api.repository;
 import com.bankofz.inqcust.api.domain.CustomerRecord;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Repository;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -30,32 +31,43 @@ public class MockCustomerRepository implements CustomerRepository {
             Pattern.compile("^[A-Za-z_][A-Za-z0-9_$]*(\\.[A-Za-z_][A-Za-z0-9_$]*){0,2}$");
     private final List<CustomerRecord> customers;
     private final String dataMode;
-    private final String dbUrl;
-    private final String dbUsername;
-    private final String dbPassword;
     private final String dbTableName;
+    private final DataSource dataSource;
 
     public MockCustomerRepository(
             @Value("${app.data.mode:mock}") String dataMode,
             @Value("${app.mock-data.path:mock-data/customer-records.json}") String mockDataPath,
-            @Value("${app.db.url:}") String dbUrl,
-            @Value("${app.db.username:}") String dbUsername,
-            @Value("${app.db.password:}") String dbPassword,
             @Value("${app.db.table-name:CUSTOMER}") String dbTableName,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            ObjectProvider<DataSource> dataSourceProvider
+    ) {
+        this(
+                dataMode,
+                mockDataPath,
+                dbTableName,
+                objectMapper,
+                dataSourceProvider.getIfAvailable()
+        );
+    }
+
+    MockCustomerRepository(
+            String dataMode,
+            String mockDataPath,
+            String dbTableName,
+            ObjectMapper objectMapper,
+            DataSource dataSource
     ) {
         this.dataMode = dataMode == null ? "mock" : dataMode.trim().toLowerCase();
-        this.dbUrl = dbUrl;
-        this.dbUsername = dbUsername;
-        this.dbPassword = dbPassword;
         this.dbTableName = dbTableName == null ? null : dbTableName.trim();
+        this.dataSource = dataSource;
 
         if (isDbMode()) {
             validateDbConfiguration();
             this.customers = List.of();
-        } else {
-            this.customers = loadCustomers(mockDataPath, objectMapper);
+            return;
         }
+
+        this.customers = loadCustomers(mockDataPath, objectMapper);
     }
 
     @Override
@@ -215,10 +227,10 @@ public class MockCustomerRepository implements CustomerRepository {
     }
 
     private Connection openConnection() throws SQLException {
-        if (dbUsername == null || dbUsername.isBlank()) {
-            return DriverManager.getConnection(dbUrl);
+        if (dataSource == null) {
+            throw new IllegalStateException("DataSource is not configured while app.data.mode=db");
         }
-        return DriverManager.getConnection(dbUrl, dbUsername, dbPassword);
+        return dataSource.getConnection();
     }
 
     private CustomerRecord toCustomerRecord(ResultSet resultSet) throws SQLException {
@@ -253,8 +265,8 @@ public class MockCustomerRepository implements CustomerRepository {
     }
 
     private void validateDbConfiguration() {
-        if (dbUrl == null || dbUrl.isBlank()) {
-            throw new IllegalStateException("app.db.url is required when app.data.mode=db");
+        if (dataSource == null) {
+            throw new IllegalStateException("DataSource is required when app.data.mode=db");
         }
         if (dbTableName == null || dbTableName.isBlank()) {
             throw new IllegalStateException("app.db.table-name must not be empty when app.data.mode=db");

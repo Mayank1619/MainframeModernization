@@ -1,8 +1,10 @@
 package com.bankofz.inqcust.api.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Test;
 
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -28,11 +30,9 @@ class MockCustomerRepositoryTest {
                 () -> new MockCustomerRepository(
                         "db",
                         "mock-data/customer-records.json",
-                        "jdbc:test-url",
-                        "",
-                        "",
                         "CUSTOMER; DROP TABLE CUSTOMER",
-                        objectMapper
+                    objectMapper,
+                    createDataSource(DB_URL)
                 )
         );
 
@@ -44,11 +44,9 @@ class MockCustomerRepositoryTest {
         assertDoesNotThrow(() -> new MockCustomerRepository(
                 "db",
                 "mock-data/customer-records.json",
-                "jdbc:test-url",
-                "",
-                "",
                 "BANK_OF_Z.CUSTOMER",
-                objectMapper
+                objectMapper,
+                createDataSource(DB_URL)
         ));
     }
 
@@ -57,11 +55,9 @@ class MockCustomerRepositoryTest {
         MockCustomerRepository repository = new MockCustomerRepository(
                 "mock",
                 "mock-data/customer-records.json",
-                "",
-                "",
-                "",
                 "CUSTOMER",
-                objectMapper
+            objectMapper,
+            (DataSource) null
         );
 
         assertTrue(repository.findBySortCodeAndCustomerNumber("123456", "0000000001").isPresent());
@@ -74,11 +70,9 @@ class MockCustomerRepositoryTest {
         MockCustomerRepository repository = new MockCustomerRepository(
                 "db",
                 "mock-data/customer-records.json",
-                DB_URL,
-                "",
-                "",
                 "CUSTOMER",
-                objectMapper
+            objectMapper,
+            createDataSource(DB_URL)
         );
 
         Optional<com.bankofz.inqcust.api.domain.CustomerRecord> customer =
@@ -95,11 +89,9 @@ class MockCustomerRepositoryTest {
         MockCustomerRepository repository = new MockCustomerRepository(
                 "db",
                 "mock-data/customer-records.json",
-                DB_URL,
-                "",
-                "",
                 "CUSTOMER",
-                objectMapper
+            objectMapper,
+            createDataSource(DB_URL)
         );
 
         Optional<com.bankofz.inqcust.api.domain.CustomerRecord> latest =
@@ -108,6 +100,22 @@ class MockCustomerRepositoryTest {
         assertTrue(latest.isPresent());
         assertNotNull(latest.get().customerNumber());
         assertEquals("3000000000", latest.get().customerNumber());
+    }
+
+    @Test
+    void dbModeRequiresDataSourceConfiguration() {
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> new MockCustomerRepository(
+                        "db",
+                        "mock-data/customer-records.json",
+                        "CUSTOMER",
+                        objectMapper,
+                    (DataSource) null
+                )
+        );
+
+        assertTrue(exception.getMessage().contains("DataSource"));
     }
 
     private static void seedDatabase() throws SQLException {
@@ -186,5 +194,11 @@ class MockCustomerRepositoryTest {
             statement.setInt(17, 20250510);
             statement.executeUpdate();
         }
+    }
+
+    private static DataSource createDataSource(String dbUrl) {
+        JdbcDataSource dataSource = new JdbcDataSource();
+        dataSource.setURL(dbUrl);
+        return dataSource;
     }
 }
