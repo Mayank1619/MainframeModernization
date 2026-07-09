@@ -77,7 +77,7 @@ public class CustomerInquiryService {
             );
         }
 
-        int highestCustomerNumber = Integer.parseInt(latestCustomer.get().customerNumber());
+        long highestCustomerNumber = Long.parseLong(latestCustomer.get().customerNumber());
         for (int attempt = 0; attempt < randomRetryLimit; attempt++) {
             String generatedCustomerNumber = randomCustomerNumberGenerator.nextCustomerNumber(highestCustomerNumber);
             Optional<CustomerRecord> found = customerRepository.findBySortCodeAndCustomerNumber(sortCode, generatedCustomerNumber);

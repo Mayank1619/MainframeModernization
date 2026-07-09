@@ -14,8 +14,8 @@ public class DefaultRandomCustomerNumberGenerator implements RandomCustomerNumbe
     }
 
     @Override
-    public String nextCustomerNumber(int highestCustomerNumber) {
-        int value = randomGenerator.nextInt(1, highestCustomerNumber + 1);
+    public String nextCustomerNumber(long highestCustomerNumber) {
+        long value = randomGenerator.nextLong(1, highestCustomerNumber + 1);
         return String.format("%010d", value);
     }
 }

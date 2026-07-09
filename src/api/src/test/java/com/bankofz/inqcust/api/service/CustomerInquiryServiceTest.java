@@ -19,7 +19,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -113,7 +113,7 @@ class CustomerInquiryServiceTest {
     void randomLookupGetsLatestThenFindsCustomer() {
     when(customerRepository.findLatestBySortCode("123456"))
         .thenReturn(Optional.of(record("123456", "0000000005", "INACTIVE", 720, 20260201)));
-    when(randomCustomerNumberGenerator.nextCustomerNumber(5)).thenReturn("0000000002");
+    when(randomCustomerNumberGenerator.nextCustomerNumber(5L)).thenReturn("0000000002");
     when(customerRepository.findBySortCodeAndCustomerNumber("123456", "0000000002"))
         .thenReturn(Optional.of(record("123456", "0000000002", "ACTIVE", 650, 20250510)));
 
@@ -123,7 +123,7 @@ class CustomerInquiryServiceTest {
         assertEquals("Y", response.legacyStatus().inquirySuccess());
         assertEquals("0000000002", response.customer().customerNumber());
     verify(customerRepository).findLatestBySortCode("123456");
-    verify(randomCustomerNumberGenerator).nextCustomerNumber(5);
+        verify(randomCustomerNumberGenerator).nextCustomerNumber(5L);
     verify(customerRepository).findBySortCodeAndCustomerNumber("123456", "0000000002");
     verify(customerRepository, never()).findBySortCodeAndCustomerNumber("123456", "0000000000");
     }
@@ -132,7 +132,7 @@ class CustomerInquiryServiceTest {
     void randomLookupRetriesUntilFound() {
     when(customerRepository.findLatestBySortCode("123456"))
         .thenReturn(Optional.of(record("123456", "0000000005", "INACTIVE", 720, 20260201)));
-    when(randomCustomerNumberGenerator.nextCustomerNumber(5))
+    when(randomCustomerNumberGenerator.nextCustomerNumber(5L))
         .thenReturn("0000000004", "0000000002");
     when(customerRepository.findBySortCodeAndCustomerNumber("123456", "0000000004"))
         .thenReturn(Optional.empty());
@@ -144,7 +144,7 @@ class CustomerInquiryServiceTest {
         assertEquals(LookupMode.RANDOM, response.lookupMode());
     assertEquals("Y", response.legacyStatus().inquirySuccess());
     assertEquals("0000000002", response.customer().customerNumber());
-    verify(randomCustomerNumberGenerator, times(2)).nextCustomerNumber(5);
+    verify(randomCustomerNumberGenerator, times(2)).nextCustomerNumber(5L);
     verify(customerRepository).findBySortCodeAndCustomerNumber("123456", "0000000004");
     verify(customerRepository).findBySortCodeAndCustomerNumber("123456", "0000000002");
     }
@@ -159,14 +159,14 @@ class CustomerInquiryServiceTest {
     assertEquals("N", response.legacyStatus().inquirySuccess());
     assertEquals("1", response.legacyStatus().inquiryFailCode());
     assertNull(response.customer());
-        verify(randomCustomerNumberGenerator, never()).nextCustomerNumber(anyInt());
+        verify(randomCustomerNumberGenerator, never()).nextCustomerNumber(anyLong());
     }
 
     @Test
     void randomLookupReturnsNotFoundAfterRetryLimit() {
     when(customerRepository.findLatestBySortCode("123456"))
         .thenReturn(Optional.of(record("123456", "0000000005", "INACTIVE", 720, 20260201)));
-    when(randomCustomerNumberGenerator.nextCustomerNumber(5))
+    when(randomCustomerNumberGenerator.nextCustomerNumber(5L))
         .thenReturn("0000000004", "0000000004", "0000000004", "0000000004");
     when(customerRepository.findBySortCodeAndCustomerNumber("123456", "0000000004"))
         .thenReturn(Optional.empty());
@@ -187,8 +187,24 @@ class CustomerInquiryServiceTest {
     assertEquals("N", response.legacyStatus().inquirySuccess());
     assertEquals("1", response.legacyStatus().inquiryFailCode());
     assertNull(response.customer());
-    verify(randomCustomerNumberGenerator, times(4)).nextCustomerNumber(5);
+    verify(randomCustomerNumberGenerator, times(4)).nextCustomerNumber(5L);
     verify(customerRepository, times(4)).findBySortCodeAndCustomerNumber("123456", "0000000004");
+    }
+
+    @Test
+    void randomLookupSupportsTenDigitCustomerNumbersAboveIntegerMaxValue() {
+    when(customerRepository.findLatestBySortCode("123456"))
+        .thenReturn(Optional.of(record("123456", "3000000000", "INACTIVE", 720, 20260201)));
+    when(randomCustomerNumberGenerator.nextCustomerNumber(3000000000L)).thenReturn("2147483648");
+    when(customerRepository.findBySortCodeAndCustomerNumber("123456", "2147483648"))
+        .thenReturn(Optional.of(record("123456", "2147483648", "ACTIVE", 650, 20250510)));
+
+    CustomerInquiryResponse response = service.inquire("123456", "0000000000");
+
+    assertEquals(LookupMode.RANDOM, response.lookupMode());
+    assertEquals("Y", response.legacyStatus().inquirySuccess());
+    assertEquals("2147483648", response.customer().customerNumber());
+    verify(randomCustomerNumberGenerator).nextCustomerNumber(3000000000L);
     }
 
     private static CustomerRecord record(String sortCode, String number, String status, int score, int reviewDate) {
