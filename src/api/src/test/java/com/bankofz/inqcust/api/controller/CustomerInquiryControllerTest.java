@@ -102,6 +102,42 @@ class CustomerInquiryControllerTest {
     }
 
     @Test
+    void suspendedCustomerReturnsHighRiskInApiResponse() throws Exception {
+        when(customerInquiryService.inquire("123456", "0000000003"))
+                .thenReturn(successResponse(
+                        "0000000003",
+                        LookupMode.SPECIFIC,
+                        CustomerStatus.SUSPENDED,
+                        742,
+                        RiskRating.HIGH,
+                        List.of("STATUS_SUSPENDED")
+                ));
+
+        mockMvc.perform(get("/api/v1/customers/123456/0000000003").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.riskAssessment.riskRating").value("HIGH"))
+                .andExpect(jsonPath("$.riskAssessment.reasons[0]").value("STATUS_SUSPENDED"));
+    }
+
+    @Test
+    void lowCreditScoreReturnsHighRiskInApiResponse() throws Exception {
+        when(customerInquiryService.inquire("123456", "0000000004"))
+                .thenReturn(successResponse(
+                        "0000000004",
+                        LookupMode.SPECIFIC,
+                        CustomerStatus.ACTIVE,
+                        580,
+                        RiskRating.HIGH,
+                        List.of("CREDIT_SCORE_LT_600")
+                ));
+
+        mockMvc.perform(get("/api/v1/customers/123456/0000000004").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.riskAssessment.riskRating").value("HIGH"))
+                .andExpect(jsonPath("$.riskAssessment.reasons[0]").value("CREDIT_SCORE_LT_600"));
+    }
+
+    @Test
     void serviceExceptionReturnsHttp500() throws Exception {
         doThrow(new RuntimeException("boom"))
                 .when(customerInquiryService)
@@ -113,6 +149,24 @@ class CustomerInquiryControllerTest {
     }
 
     private static CustomerInquiryResponse successResponse(String customerNumber, LookupMode mode) {
+        return successResponse(
+                customerNumber,
+                mode,
+                CustomerStatus.ACTIVE,
+                742,
+                RiskRating.LOW,
+                List.of("ACTIVE_SCORE_GE_700_REVIEW_CURRENT")
+        );
+    }
+
+    private static CustomerInquiryResponse successResponse(
+            String customerNumber,
+            LookupMode mode,
+            CustomerStatus customerStatus,
+            int creditScore,
+            RiskRating riskRating,
+            List<String> reasons
+    ) {
         return new CustomerInquiryResponse(
                 new LegacyInquiryStatus("Y", "0", "Inquiry successful"),
                 mode,
@@ -126,12 +180,12 @@ class CustomerInquiryControllerTest {
                         LocalDate.of(1975, 1, 1),
                         "4165550101",
                         new AddressResponse("1 Main Street", "Suite 100", "Toronto", "M5H2N2", "Canada"),
-                        CustomerStatus.ACTIVE,
+                        customerStatus,
                         LocalDate.of(2010, 6, 15),
-                        742,
+                        creditScore,
                         LocalDate.of(2026, 1, 15)
                 ),
-                new RiskAssessmentResponse(RiskRating.LOW, false, List.of("ACTIVE_SCORE_GE_700_REVIEW_CURRENT"))
+                new RiskAssessmentResponse(riskRating, false, reasons)
         );
     }
 

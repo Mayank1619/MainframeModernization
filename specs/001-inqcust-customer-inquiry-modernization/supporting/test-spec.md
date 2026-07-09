@@ -68,3 +68,9 @@ GET `/api/v1/customers/123456/9999999999` returns latest customer.
 
 ### CT-006 Random request returns HTTP 200 or 404 based on deterministic selector setup
 Test random behavior at service level to avoid flaky controller tests.
+
+### CT-007 Suspended customer returns HIGH risk
+GET `/api/v1/customers/123456/0000000003` returns 200 and `riskAssessment.riskRating = HIGH` with reason `STATUS_SUSPENDED`.
+
+### CT-008 Low credit score returns HIGH risk
+GET `/api/v1/customers/123456/0000000004` returns 200 and `riskAssessment.riskRating = HIGH` with reason `CREDIT_SCORE_LT_600`.

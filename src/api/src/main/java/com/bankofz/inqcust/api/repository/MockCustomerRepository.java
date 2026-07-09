@@ -11,6 +11,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -18,17 +23,43 @@ import java.util.Optional;
 @Repository
 public class MockCustomerRepository implements CustomerRepository {
 
+    private static final String MODE_DB = "db";
     private final List<CustomerRecord> customers;
+    private final String dataMode;
+    private final String dbUrl;
+    private final String dbUsername;
+    private final String dbPassword;
+    private final String dbTableName;
 
     public MockCustomerRepository(
+            @Value("${app.data.mode:mock}") String dataMode,
             @Value("${app.mock-data.path:mock-data/customer-records.json}") String mockDataPath,
+            @Value("${app.db.url:}") String dbUrl,
+            @Value("${app.db.username:}") String dbUsername,
+            @Value("${app.db.password:}") String dbPassword,
+            @Value("${app.db.table-name:CUSTOMER}") String dbTableName,
             ObjectMapper objectMapper
     ) {
-        this.customers = loadCustomers(mockDataPath, objectMapper);
+        this.dataMode = dataMode == null ? "mock" : dataMode.trim().toLowerCase();
+        this.dbUrl = dbUrl;
+        this.dbUsername = dbUsername;
+        this.dbPassword = dbPassword;
+        this.dbTableName = dbTableName;
+
+        if (isDbMode()) {
+            validateDbConfiguration();
+            this.customers = List.of();
+        } else {
+            this.customers = loadCustomers(mockDataPath, objectMapper);
+        }
     }
 
     @Override
     public Optional<CustomerRecord> findBySortCodeAndCustomerNumber(String sortCode, String customerNumber) {
+        if (isDbMode()) {
+            return findBySortCodeAndCustomerNumberFromDb(sortCode, customerNumber);
+        }
+
         return customers.stream()
                 .filter(customer -> sortCode.equals(customer.sortCode())
                         && customerNumber.equals(customer.customerNumber()))
@@ -37,9 +68,140 @@ public class MockCustomerRepository implements CustomerRepository {
 
     @Override
     public List<CustomerRecord> findBySortCode(String sortCode) {
+        if (isDbMode()) {
+            return findBySortCodeFromDb(sortCode);
+        }
+
         return customers.stream()
                 .filter(customer -> sortCode.equals(customer.sortCode()))
                 .toList();
+    }
+
+    private Optional<CustomerRecord> findBySortCodeAndCustomerNumberFromDb(String sortCode, String customerNumber) {
+        String sql = """
+                SELECT
+                    CUSTOMER_EYECATCHER,
+                    CUSTOMER_SORTCODE,
+                    CUSTOMER_NUMBER,
+                    CUSTOMER_TITLE,
+                    CUSTOMER_FIRST_NAME,
+                    CUSTOMER_LAST_NAME,
+                    CUSTOMER_DATE_OF_BIRTH,
+                    CUSTOMER_PHONE,
+                    CUSTOMER_ADDR_LINE1,
+                    CUSTOMER_ADDR_LINE2,
+                    CUSTOMER_CITY,
+                    CUSTOMER_POSTCODE,
+                    CUSTOMER_COUNTRY,
+                    CUSTOMER_STATUS,
+                    CUSTOMER_CREATED_DATE,
+                    CUSTOMER_CREDIT_SCORE,
+                    CUSTOMER_CS_REVIEW_DATE
+                FROM %s
+                WHERE CUSTOMER_SORTCODE = ? AND CUSTOMER_NUMBER = ?
+                """.formatted(dbTableName);
+
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, sortCode);
+            statement.setString(2, customerNumber);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return Optional.of(toCustomerRecord(resultSet));
+                }
+                return Optional.empty();
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed DB lookup for specific customer", exception);
+        }
+    }
+
+    private List<CustomerRecord> findBySortCodeFromDb(String sortCode) {
+        String sql = """
+                SELECT
+                    CUSTOMER_EYECATCHER,
+                    CUSTOMER_SORTCODE,
+                    CUSTOMER_NUMBER,
+                    CUSTOMER_TITLE,
+                    CUSTOMER_FIRST_NAME,
+                    CUSTOMER_LAST_NAME,
+                    CUSTOMER_DATE_OF_BIRTH,
+                    CUSTOMER_PHONE,
+                    CUSTOMER_ADDR_LINE1,
+                    CUSTOMER_ADDR_LINE2,
+                    CUSTOMER_CITY,
+                    CUSTOMER_POSTCODE,
+                    CUSTOMER_COUNTRY,
+                    CUSTOMER_STATUS,
+                    CUSTOMER_CREATED_DATE,
+                    CUSTOMER_CREDIT_SCORE,
+                    CUSTOMER_CS_REVIEW_DATE
+                FROM %s
+                WHERE CUSTOMER_SORTCODE = ?
+                """.formatted(dbTableName);
+
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, sortCode);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                java.util.ArrayList<CustomerRecord> results = new java.util.ArrayList<>();
+                while (resultSet.next()) {
+                    results.add(toCustomerRecord(resultSet));
+                }
+                return results;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Failed DB lookup for sort code", exception);
+        }
+    }
+
+    private Connection openConnection() throws SQLException {
+        if (dbUsername == null || dbUsername.isBlank()) {
+            return DriverManager.getConnection(dbUrl);
+        }
+        return DriverManager.getConnection(dbUrl, dbUsername, dbPassword);
+    }
+
+    private CustomerRecord toCustomerRecord(ResultSet resultSet) throws SQLException {
+        return new CustomerRecord(
+                resultSet.getString("CUSTOMER_EYECATCHER"),
+                resultSet.getString("CUSTOMER_SORTCODE"),
+                resultSet.getString("CUSTOMER_NUMBER"),
+                resultSet.getString("CUSTOMER_TITLE"),
+                resultSet.getString("CUSTOMER_FIRST_NAME"),
+                resultSet.getString("CUSTOMER_LAST_NAME"),
+                getNullableInteger(resultSet, "CUSTOMER_DATE_OF_BIRTH"),
+                resultSet.getString("CUSTOMER_PHONE"),
+                resultSet.getString("CUSTOMER_ADDR_LINE1"),
+                resultSet.getString("CUSTOMER_ADDR_LINE2"),
+                resultSet.getString("CUSTOMER_CITY"),
+                resultSet.getString("CUSTOMER_POSTCODE"),
+                resultSet.getString("CUSTOMER_COUNTRY"),
+                resultSet.getString("CUSTOMER_STATUS"),
+                getNullableInteger(resultSet, "CUSTOMER_CREATED_DATE"),
+                getNullableInteger(resultSet, "CUSTOMER_CREDIT_SCORE"),
+                getNullableInteger(resultSet, "CUSTOMER_CS_REVIEW_DATE")
+        );
+    }
+
+    private Integer getNullableInteger(ResultSet resultSet, String columnName) throws SQLException {
+        int value = resultSet.getInt(columnName);
+        return resultSet.wasNull() ? null : value;
+    }
+
+    private boolean isDbMode() {
+        return MODE_DB.equals(dataMode);
+    }
+
+    private void validateDbConfiguration() {
+        if (dbUrl == null || dbUrl.isBlank()) {
+            throw new IllegalStateException("app.db.url is required when app.data.mode=db");
+        }
+        if (dbTableName == null || dbTableName.isBlank()) {
+            throw new IllegalStateException("app.db.table-name must not be empty when app.data.mode=db");
+        }
     }
 
     private List<CustomerRecord> loadCustomers(String mockDataPath, ObjectMapper objectMapper) {
@@ -55,22 +217,24 @@ public class MockCustomerRepository implements CustomerRepository {
     }
 
     private InputStream openInputStream(String mockDataPath) throws IOException {
-        Path directPath = Path.of(mockDataPath);
+        String resolvedPath = mockDataPath == null ? "" : mockDataPath;
+
+        Path directPath = Path.of(resolvedPath);
         if (Files.exists(directPath)) {
             return Files.newInputStream(directPath);
         }
 
-        Path repoRelativePath = Path.of("..", "..", mockDataPath);
+        Path repoRelativePath = Path.of("..", "..", resolvedPath);
         if (Files.exists(repoRelativePath)) {
             return Files.newInputStream(repoRelativePath);
         }
 
-        ClassPathResource resource = new ClassPathResource(mockDataPath);
+        ClassPathResource resource = new ClassPathResource(resolvedPath);
         if (resource.exists()) {
             return resource.getInputStream();
         }
 
-        throw new IOException("Mock data file not found: " + mockDataPath);
+        throw new IOException("Mock data file not found: " + resolvedPath);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
