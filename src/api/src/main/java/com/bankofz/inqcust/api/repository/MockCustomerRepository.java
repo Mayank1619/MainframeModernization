@@ -19,11 +19,15 @@ import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Repository
 public class MockCustomerRepository implements CustomerRepository {
 
     private static final String MODE_DB = "db";
+    // Allow only unquoted SQL identifiers with optional schema prefix (e.g., CUSTOMER or BANK.CUSTOMER).
+    private static final Pattern SAFE_TABLE_NAME_PATTERN =
+            Pattern.compile("^[A-Za-z_][A-Za-z0-9_$]*(\\.[A-Za-z_][A-Za-z0-9_$]*){0,2}$");
     private final List<CustomerRecord> customers;
     private final String dataMode;
     private final String dbUrl;
@@ -44,7 +48,7 @@ public class MockCustomerRepository implements CustomerRepository {
         this.dbUrl = dbUrl;
         this.dbUsername = dbUsername;
         this.dbPassword = dbPassword;
-        this.dbTableName = dbTableName;
+        this.dbTableName = dbTableName == null ? null : dbTableName.trim();
 
         if (isDbMode()) {
             validateDbConfiguration();
@@ -254,6 +258,11 @@ public class MockCustomerRepository implements CustomerRepository {
         }
         if (dbTableName == null || dbTableName.isBlank()) {
             throw new IllegalStateException("app.db.table-name must not be empty when app.data.mode=db");
+        }
+        if (!SAFE_TABLE_NAME_PATTERN.matcher(dbTableName).matches()) {
+            throw new IllegalStateException(
+                    "app.db.table-name contains unsupported characters; use unquoted identifiers like CUSTOMER or SCHEMA.CUSTOMER"
+            );
         }
     }
 
