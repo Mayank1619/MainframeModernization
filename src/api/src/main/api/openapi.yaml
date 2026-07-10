@@ -15,6 +15,8 @@ info:
 tags:
   - name: Customers
     description: Customer information endpoints
+  - name: INQCUST
+    description: INQCUST Spring Boot customer inquiry endpoints
   - name: Accounts
     description: Account information endpoints
   - name: Balances
@@ -240,6 +242,48 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/customers/{sortCode}/{customerNumber}:
+    get:
+      tags:
+        - INQCUST
+      summary: Retrieve customer inquiry response
+      description: Retrieve INQCUST customer inquiry data from the Spring Boot modernization service.
+      operationId: getInqcustCustomerInquiry
+      parameters:
+        - name: sortCode
+          in: path
+          required: true
+          description: 6-digit sort code.
+          schema:
+            type: string
+            pattern: '^[0-9]{6}$'
+            example: "123456"
+        - name: customerNumber
+          in: path
+          required: true
+          description: 10-digit customer number. Use 0000000000 for random lookup and 9999999999 for latest lookup.
+          schema:
+            type: string
+            pattern: '^[0-9]{10}$'
+            example: "0000000001"
+      responses:
+        '200':
+          description: Customer inquiry completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InqcustCustomerInquiryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/InqcustNotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -632,6 +676,139 @@ components:
             transactions: Access to transaction history
 
   schemas:
+    InqcustCustomerInquiryResponse:
+      type: object
+      required:
+        - legacyStatus
+        - lookupMode
+      properties:
+        legacyStatus:
+          $ref: '#/components/schemas/InqcustLegacyInquiryStatus'
+        lookupMode:
+          type: string
+          enum: [SPECIFIC, RANDOM, LATEST]
+        customer:
+          $ref: '#/components/schemas/InqcustCustomer'
+          nullable: true
+        riskAssessment:
+          $ref: '#/components/schemas/InqcustRiskAssessment'
+          nullable: true
+
+    InqcustLegacyInquiryStatus:
+      type: object
+      required:
+        - inquirySuccess
+        - inquiryFailCode
+        - message
+      properties:
+        inquirySuccess:
+          type: string
+          enum: [Y, N]
+          example: "Y"
+        inquiryFailCode:
+          type: string
+          enum: ['0', '1', '2', '9']
+          example: "0"
+        message:
+          type: string
+          description: Legacy-aligned status message.
+          example: "Inquiry completed successfully"
+
+    InqcustCustomer:
+      type: object
+      properties:
+        eyecatcher:
+          type: string
+          maxLength: 4
+          example: "CUST"
+        sortCode:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: "123456"
+        customerNumber:
+          type: string
+          pattern: '^[0-9]{10}$'
+          example: "0000000001"
+        title:
+          type: string
+          maxLength: 10
+          example: "Mr"
+        firstName:
+          type: string
+          maxLength: 50
+          example: "John"
+        lastName:
+          type: string
+          maxLength: 50
+          example: "Smith"
+        dateOfBirth:
+          type: string
+          format: date
+          description: Date converted from legacy numeric YYYYMMDD.
+          example: "1985-06-15"
+        phone:
+          type: string
+          maxLength: 20
+          example: "+44 20 7946 0958"
+        address:
+          $ref: '#/components/schemas/InqcustAddress'
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, SUSPENDED]
+          example: "ACTIVE"
+        createdDate:
+          type: string
+          format: date
+          description: Date converted from legacy numeric YYYYMMDD.
+          example: "2020-01-15"
+        creditScore:
+          type: integer
+          minimum: 0
+          maximum: 999
+          example: 742
+        creditScoreReviewDate:
+          type: string
+          format: date
+          description: Date converted from legacy numeric YYYYMMDD.
+          example: "2025-10-05"
+
+    InqcustAddress:
+      type: object
+      properties:
+        line1:
+          type: string
+          example: "123 High Street"
+        line2:
+          type: string
+          example: "Apartment 4B"
+        city:
+          type: string
+          example: "London"
+        postcode:
+          type: string
+          example: "SW1A 1AA"
+        country:
+          type: string
+          example: "United Kingdom"
+
+    InqcustRiskAssessment:
+      type: object
+      properties:
+        riskRating:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+          example: "LOW"
+        reviewRequired:
+          type: boolean
+          example: false
+        reasons:
+          type: array
+          items:
+            type: string
+          example:
+            - "Customer is ACTIVE"
+            - "Credit score is current"
+
     CreateCustomerRequest:
       type: object
       required:
@@ -1089,6 +1266,21 @@ components:
                 example: "Account ID must be a valid format"
 
   responses:
+    InqcustNotFound:
+      description: Customer not found or special lookup failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InqcustCustomerInquiryResponse'
+          example:
+            legacyStatus:
+              inquirySuccess: "N"
+              inquiryFailCode: "1"
+              message: "Customer not found"
+            lookupMode: "SPECIFIC"
+            customer: null
+            riskAssessment: null
+
     BadRequest:
       description: Bad request - invalid parameters
       content:
