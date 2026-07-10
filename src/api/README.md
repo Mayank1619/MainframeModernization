@@ -54,6 +54,28 @@ From `src/api`:
 
 Use the Spring Boot Maven commands above for local build and run.
 
+### Running By Data Mode
+
+- Mock mode (default)
+	- No DB setup required.
+	- Ensure `app.data.mode=mock` (already set by default in `src/main/resources/application.properties`).
+	- Run: `mvn spring-boot:run`
+
+- DB mode (optional)
+	- Set `app.data.mode=db`.
+	- Provide DB connection values:
+		- `APP_DB_URL`
+		- `APP_DB_USERNAME`
+		- `APP_DB_PASSWORD`
+	- Example (PowerShell):
+		- `$env:APP_DATA_MODE='db'`
+		- `$env:APP_DB_URL='jdbc:db2://host:port/database'`
+		- `$env:APP_DB_USERNAME='your_user'`
+		- `$env:APP_DB_PASSWORD='your_password'`
+		- `mvn spring-boot:run`
+
+If DB mode is enabled without valid DB values, startup will fail by design.
+
 ## Source Layout
 
 - `src/main/java/com/bankofz/inqcust/api/controller`

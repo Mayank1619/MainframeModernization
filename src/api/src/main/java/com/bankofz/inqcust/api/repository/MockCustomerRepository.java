@@ -4,6 +4,7 @@ import com.bankofz.inqcust.api.domain.CustomerRecord;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Repository;
@@ -34,6 +35,7 @@ public class MockCustomerRepository implements CustomerRepository {
     private final String dbTableName;
     private final DataSource dataSource;
 
+    @Autowired
     public MockCustomerRepository(
             @Value("${app.data.mode:mock}") String dataMode,
             @Value("${app.mock-data.path:mock-data/customer-records.json}") String mockDataPath,
