@@ -7,14 +7,16 @@ import org.junit.platform.suite.api.Suite;
 
 import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
 import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
+import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PUBLISH_ENABLED_PROPERTY_NAME;
 
 @Suite
 @IncludeEngines("cucumber")
 @SelectPackages("com.modernizemainframe")
 @ConfigurationParameter(
     key = PLUGIN_PROPERTY_NAME, 
-    value = "pretty, junit:tests/target/surefire-reports/junitreport.xml"
+    value = "pretty"
 )
 @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.modernizemainframe")
+@ConfigurationParameter(key = PLUGIN_PUBLISH_ENABLED_PROPERTY_NAME, value = "true")
 public class RunCucumberTest {
 }
