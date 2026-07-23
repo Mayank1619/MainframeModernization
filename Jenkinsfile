@@ -17,6 +17,14 @@ pipeline {
             }
         }
 
+        stage('Place mock repo') {
+            steps {
+                dir ('.') {
+                    sh 'cp -r testdata/mock-data app/src/api'
+                }
+            }
+        }
+
         stage('Build App') {
             steps {
                 withMaven(
