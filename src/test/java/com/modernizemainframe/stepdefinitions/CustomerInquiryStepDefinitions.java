@@ -1,40 +1,21 @@
 package com.modernizemainframe.stepdefinitions;
 
-import io.cucumber.java.After;
-import io.cucumber.java.Before;
-import io.cucumber.java.en.And;
-import io.cucumber.java.en.Given;
-import io.cucumber.java.en.Then;
-import io.cucumber.java.en.When;
-import io.restassured.response.Response;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
 
 import com.modernizemainframe.api.CustomerInquiryClient;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import io.cucumber.java.en.And;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import io.restassured.response.Response;
 
 public class CustomerInquiryStepDefinitions {
 
     private final CustomerInquiryClient apiClient = new CustomerInquiryClient();
     private Response response;
-
-    @Before
-    public void setUp() {
-        apiClient.configure();
-    }
-
-    @After
-    public void tearDown() {
-        this.response = null;
-    }
-
-    @Given("the API is running at localhost:8080")
-    public void theApiIsRunningAtLocalhost8080() {
-        assertThat(apiClient.baseUri()).isEqualTo("http://localhost");
-        assertThat(apiClient.port()).isEqualTo(8080);
-    }
 
     @When("I request the customer with sort code {string} and customer number {string}")
     public void iRequestTheCustomerWithSortCodeAndCustomerNumber(String sortCode, String customerNumber) {
