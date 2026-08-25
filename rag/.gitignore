@@ -1,0 +1,10 @@
+__pycache__/
+.DS_Store
+.env
+.venv/
+cocoindex.db
+output/
+input_embeddings/
+vector_store/
+results.json
+embeddings_*.parquet

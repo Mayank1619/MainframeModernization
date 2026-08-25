@@ -1,0 +1,18 @@
+# Python 3.11+
+
+# Incremental ingestion, Tree-sitter chunking/symbol matching, and LLM integration.
+cocoindex[litellm]==1.0.20
+
+# File/node summaries and final retrieved answers.
+groq==1.6.0
+
+# Voyage token counting and embeddings.
+voyageai==0.5.0
+
+# Local code embeddings and the embedded vector store.
+lancedb==0.37.1
+sentence-transformers==6.0.0
+einops==0.8.1
+
+# Local configuration loaded from an uncommitted .env file.
+python-dotenv==1.2.3
