@@ -6,6 +6,10 @@ cocoindex[litellm]==1.0.20
 # File/node summaries and final retrieved answers.
 groq==1.6.0
 
+# Local HTTP endpoint used by the React code-assistant overlay.
+fastapi==0.141.1
+uvicorn==0.52.4
+
 # Voyage token counting and embeddings.
 voyageai==0.5.0
 
